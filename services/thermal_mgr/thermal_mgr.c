@@ -102,7 +102,7 @@ static void thermalMgr(void *pvParameters) {
         safeOperatingConditions();
       }
     } else {
-      LOG_ERROR("Invalid event received!");
+      LOG_ERROR_CODE(ERR_CODE_INVALID_EVENT);
     }
   }
 }

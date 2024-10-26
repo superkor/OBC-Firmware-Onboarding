@@ -41,7 +41,7 @@ error_code_t readTempLM75BD(uint8_t devAddr, float *temp) {
     RETURN_IF_ERROR_CODE(res);
   }
 
-  uint8_t buff[2] = {0}; //0 is MSB, 1 is LSB
+  uint8_t buff[2] = {0, 0}; //0 is MSB, 1 is LSB
 
   res = i2cReceiveFrom(devAddr, buff, sizeof(buff)); //get actual temperature reading
 
@@ -49,9 +49,9 @@ error_code_t readTempLM75BD(uint8_t devAddr, float *temp) {
     RETURN_IF_ERROR_CODE(res);
   }
 
-  int16_t val = ((buff[0] << 8) | buff[1]) >>5;
+  int16_t val = ((int16_t)(buff[0] << 8 | buff[1]) >> 5);
 
-  *temp = val * 0.125f; //store result
+  *temp = val * 0.125; //store result
 
   return ERR_CODE_SUCCESS;
 }
