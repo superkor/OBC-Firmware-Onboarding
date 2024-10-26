@@ -29,35 +29,27 @@ error_code_t lm75bdInit(lm75bd_config_t *config) {
 
 error_code_t readTempLM75BD(uint8_t devAddr, float *temp) {
   /* Implement this driver function */
-  if (temp == 0){
+  if (temp == NULL){
     return ERR_CODE_INVALID_ARG; //pointer should not be null
   }
 
   uint8_t tempPointer = 0x0; //temp pointer reg is set to 0 to specify temperature reading to the device
 
-  error_code_t res = i2cSendTo(devAddr, &tempPointer, 1); // write pointer byte 0x0 to the device address for temperature reading
+  error_code_t res = i2cSendTo(devAddr, &tempPointer, sizeof(tempPointer)); // write pointer byte 0x0 to the device address for temperature reading
 
   if (res != ERR_CODE_SUCCESS){
-    return ERR_CODE_UNKNOWN;
+    RETURN_IF_ERROR_CODE(res);
   }
 
-  uint8_t buff[2] = {}; //0 is MSB, 1 is LSB
+  uint8_t buff[2] = {0}; //0 is MSB, 1 is LSB
 
-  res = i2cReceiveFrom(devAddr, buff, 2); //get actual temperature reading
+  res = i2cReceiveFrom(devAddr, buff, sizeof(buff)); //get actual temperature reading
 
   if (res != ERR_CODE_SUCCESS){
-    return ERR_CODE_UNKNOWN;
+    RETURN_IF_ERROR_CODE(res);
   }
 
-  int16_t val = 1; //default positive value
-
-  if (buff[0] & 0x80){
-    //2s complement on the negative number
-    buff[0] = (buff[0] ^ 0xFF) + 1;
-    val = -1; //negative value
-  }
-
-  val *= (buff[0] << 3) + (buff[1] >> 5); //combine buffer into a single 16 bit value (5 LSB in buff[1] are ignored) -- this is multiplied onto val to keep the sign of the value
+  int16_t val = ((buff[0] << 8) | buff[1]) >>5;
 
   *temp = val * 0.125f; //store result
 

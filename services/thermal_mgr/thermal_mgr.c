@@ -2,6 +2,7 @@
 #include "errors.h"
 #include "lm75bd.h"
 #include "console.h"
+#include "logging.h"
 
 #include <FreeRTOS.h>
 #include <os_task.h>
@@ -42,13 +43,17 @@ void initThermalSystemManager(lm75bd_config_t *config) {
 }
 
 error_code_t thermalMgrSendEvent(thermal_mgr_event_t *event) {
-  if (event == 0){
+  if (event == NULL){
     return ERR_CODE_INVALID_ARG;
   }
 
+  if (thermalMgrQueueHandle == NULL){
+    return ERR_CODE_INVALID_STATE;
+  }
+
   /* Send an event to the thermal manager queue */
-  if (xQueueSend(thermalMgrQueueHandle, event, (TickType_t)5) != pdPASS){
-    return ERR_CODE_UNKNOWN; // failed to send message
+  if (xQueueSend(thermalMgrQueueHandle, event, (TickType_t)0) != pdPASS){
+    return ERR_CODE_QUEUE_FULL; // failed to send message
   }
 
   return ERR_CODE_SUCCESS;
@@ -56,7 +61,7 @@ error_code_t thermalMgrSendEvent(thermal_mgr_event_t *event) {
 
 void osHandlerLM75BD(void) {
   /* Implement this function */
-  thermal_mgr_event_t event = {};
+  thermal_mgr_event_t event = {0};
   event.type = THERMAL_MGR_EVENT_OS_INTERRUPT;
   thermalMgrSendEvent(&event); //OS interrupt occurred, send OS interrupt event
 }
@@ -64,31 +69,30 @@ void osHandlerLM75BD(void) {
 static void thermalMgr(void *pvParameters) {
   /* Implement this task */
 
-  thermal_mgr_event_t buffer = {};
+  thermal_mgr_event_t buffer = {0};
 
-  float tempC = 0;
 
   while (1) {
-    if (xQueueReceive(thermalMgrQueueHandle, &buffer, (TickType_t) 5) != pdPASS){ 
+    if (xQueueReceive(thermalMgrQueueHandle, &buffer, (TickType_t) portMAX_DELAY) != pdPASS){ 
       continue; 
     }  
     //received next event
 
     if (buffer.type == THERMAL_MGR_EVENT_MEASURE_TEMP_CMD){ //temperature reading event
       //read temperature
+      float tempC = 0;
       if (readTempLM75BD(LM75BD_OBC_I2C_ADDR, &tempC) != ERR_CODE_SUCCESS){
+        LOG_ERROR("Failed to read temperature sensor\n");
         continue; //some error occurred
       }
       
       addTemperatureTelemetry(tempC); //add to temperature telemetry
-
-      if (tempC >= LM75BD_DEFAULT_OT_THRESH){
-        osHandlerLM75BD(); //must check if current temperature is over T_{th}; if it is, interrupt OS for overtemperature
-      }
-
+      
     } else if (buffer.type == THERMAL_MGR_EVENT_OS_INTERRUPT){
+      float tempC = 0;
       //OS interrupt occurred => T_{th} was reached; Make sure temperature is below T_{hys}!
       if (readTempLM75BD(LM75BD_OBC_I2C_ADDR, &tempC) != ERR_CODE_SUCCESS){
+        LOG_ERROR("Failed to read temperature sensor\n");
         continue; //some error occurred
       }
 
@@ -97,6 +101,8 @@ static void thermalMgr(void *pvParameters) {
       } else {
         safeOperatingConditions();
       }
+    } else {
+      LOG_ERROR("Invalid event received!");
     }
   }
 }
