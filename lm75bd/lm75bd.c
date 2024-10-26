@@ -35,19 +35,13 @@ error_code_t readTempLM75BD(uint8_t devAddr, float *temp) {
 
   uint8_t tempPointer = 0x0; //temp pointer reg is set to 0 to specify temperature reading to the device
 
-  error_code_t res = i2cSendTo(devAddr, &tempPointer, sizeof(tempPointer)); // write pointer byte 0x0 to the device address for temperature reading
+  error_code_t errCode = 0;
 
-  if (res != ERR_CODE_SUCCESS){
-    RETURN_IF_ERROR_CODE(res);
-  }
+  RETURN_IF_ERROR_CODE(i2cSendTo(devAddr, &tempPointer, sizeof(tempPointer)));// write pointer byte 0x0 to the device address for temperature reading
 
   uint8_t buff[2] = {0, 0}; //0 is MSB, 1 is LSB
 
-  res = i2cReceiveFrom(devAddr, buff, sizeof(buff)); //get actual temperature reading
-
-  if (res != ERR_CODE_SUCCESS){
-    RETURN_IF_ERROR_CODE(res);
-  }
+  RETURN_IF_ERROR_CODE(i2cReceiveFrom(devAddr, buff, sizeof(buff))); //get actual temperature reading
 
   int16_t val = ((int16_t)(buff[0] << 8 | buff[1]) >> 5);
 

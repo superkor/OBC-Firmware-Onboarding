@@ -71,7 +71,6 @@ static void thermalMgr(void *pvParameters) {
 
   thermal_mgr_event_t buffer = {0};
 
-
   while (1) {
     if (xQueueReceive(thermalMgrQueueHandle, &buffer, (TickType_t) portMAX_DELAY) != pdPASS){ 
       continue; 
@@ -81,18 +80,21 @@ static void thermalMgr(void *pvParameters) {
     if (buffer.type == THERMAL_MGR_EVENT_MEASURE_TEMP_CMD){ //temperature reading event
       //read temperature
       float tempC = 0;
-      if (readTempLM75BD(LM75BD_OBC_I2C_ADDR, &tempC) != ERR_CODE_SUCCESS){
-        LOG_ERROR("Failed to read temperature sensor\n");
+      error_code_t res = readTempLM75BD(LM75BD_OBC_I2C_ADDR, &tempC);
+      if (res != ERR_CODE_SUCCESS){
+        LOG_ERROR_CODE(res);
         continue; //some error occurred
       }
+
       
       addTemperatureTelemetry(tempC); //add to temperature telemetry
       
     } else if (buffer.type == THERMAL_MGR_EVENT_OS_INTERRUPT){
       float tempC = 0;
       //OS interrupt occurred => T_{th} was reached; Make sure temperature is below T_{hys}!
-      if (readTempLM75BD(LM75BD_OBC_I2C_ADDR, &tempC) != ERR_CODE_SUCCESS){
-        LOG_ERROR("Failed to read temperature sensor\n");
+      error_code_t res = readTempLM75BD(LM75BD_OBC_I2C_ADDR, &tempC);
+      if (res != ERR_CODE_SUCCESS){
+        LOG_ERROR_CODE(res);
         continue; //some error occurred
       }
 

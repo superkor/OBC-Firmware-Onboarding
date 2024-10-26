@@ -28,7 +28,7 @@ typedef enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL, L
 
 #define RETURN_IF_ERROR_CODE(_ret)         \
   do {                                     \
-    error_code_t errCode = _ret;                        \
+    errCode = _ret;                        \
     if (errCode != ERR_CODE_SUCCESS) { \
       LOG_ERROR_CODE(errCode);             \
       return errCode;                      \
